@@ -1081,7 +1081,8 @@ function Layout({ children }: { children: React.ReactNode }) {
           } else if (
             currentUser &&
             (window.location.pathname === "/" ||
-              window.location.pathname === "/auth")
+              (window.location.pathname === "/auth" &&
+                !currentUser.isAnonymous))
           ) {
             if (!currentUser.isAnonymous) {
               const currentStoreUser = store.getCurrentUser();
@@ -1101,7 +1102,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                 navigate("/dashboard");
               }
             } else {
-              navigate("/dashboard");
+              const guestPath =
+                sessionStorage.getItem("guest_redirect_path") || "/dashboard";
+              sessionStorage.removeItem("guest_redirect_path");
+              navigate(guestPath);
             }
           }
         }
