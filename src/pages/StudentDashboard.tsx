@@ -931,61 +931,74 @@ export default function StudentDashboard() {
   useEffect(() => {
      if (sortedUsers.length === 0) return;
      
-     const currentRanks: Record<string, number> = {};
-     let hasChanges = false;
-     let userClimbed = false;
-     
-     sortedUsers.forEach((u, index) => {
-         currentRanks[u.id] = index;
-         const prevRank = prevRanksRef.current[u.id];
-         
-         if (prevRank !== undefined && prevRank !== index) {
-             hasChanges = true;
-         }
-         
-         if (prevRank !== undefined && index < prevRank && u.id === user?.id) {
-             userClimbed = true;
-         }
-     });
-     
-     if (Object.keys(prevRanksRef.current).length === 0) {
-        prevRanksRef.current = currentRanks;
-        return;
+     if (typeof window.requestIdleCallback !== 'function') {
+        window.requestIdleCallback = function(cb) {
+            return setTimeout(function() { cb({ didTimeout: false, timeRemaining: function() { return 50; } }); }, 1);
+        } as any;
+        window.cancelIdleCallback = function(id) { clearTimeout(id); };
      }
 
-     if (!hasChanges) {
-         return;
-     }
-
-     setRankTrends(prevTrends => {
-         const newTrends = { ...prevTrends };
+     const idleHandle = window.requestIdleCallback(() => {
+         const currentRanks: Record<string, number> = {};
+         let hasChanges = false;
+         let userClimbed = false;
+         
          sortedUsers.forEach((u, index) => {
+             currentRanks[u.id] = index;
              const prevRank = prevRanksRef.current[u.id];
-             if (prevRank !== undefined) {
-                 if (index < prevRank) {
-                     newTrends[u.id] = 'up';
-                 } else if (index > prevRank) {
-                     newTrends[u.id] = 'down';
-                 } else {
-                     newTrends[u.id] = newTrends[u.id] || 'same'; 
-                 }
-             } else {
-                 newTrends[u.id] = 'same';
+             
+             if (prevRank !== undefined && prevRank !== index) {
+                 hasChanges = true;
+             }
+             
+             if (prevRank !== undefined && index < prevRank && u.id === user?.id) {
+                 userClimbed = true;
              }
          });
-         return newTrends;
+         
+         if (Object.keys(prevRanksRef.current).length === 0) {
+            prevRanksRef.current = currentRanks;
+            return;
+         }
+
+         if (!hasChanges) {
+             return;
+         }
+
+         window.requestAnimationFrame(() => {
+             setRankTrends(prevTrends => {
+                 const newTrends = { ...prevTrends };
+                 sortedUsers.forEach((u, index) => {
+                     const prevRank = prevRanksRef.current[u.id];
+                     if (prevRank !== undefined) {
+                         if (index < prevRank) {
+                             newTrends[u.id] = 'up';
+                         } else if (index > prevRank) {
+                             newTrends[u.id] = 'down';
+                         } else {
+                             newTrends[u.id] = newTrends[u.id] || 'same'; 
+                         }
+                     } else {
+                         newTrends[u.id] = 'same';
+                     }
+                 });
+                 return newTrends;
+             });
+
+             if (userClimbed && !rankCelebratedRef.current) {
+                 triggerCelebration();
+                 rankCelebratedRef.current = true;
+             }
+         });
+
+         prevRanksRef.current = currentRanks;
+         
+         if (!userClimbed) {
+             rankCelebratedRef.current = false;
+         }
      });
 
-     prevRanksRef.current = currentRanks;
-
-     if (userClimbed) {
-         if (!rankCelebratedRef.current) {
-             triggerCelebration();
-             rankCelebratedRef.current = true;
-         }
-     } else {
-         rankCelebratedRef.current = false;
-     }
+     return () => window.cancelIdleCallback(idleHandle);
   }, [sortedUsers, user?.id]);
 
   
@@ -1908,7 +1921,7 @@ export default function StudentDashboard() {
       </AnimatePresence>
 
       <AnimatePresence>
-      {activeTab === "achievements" && (
+      <div className={activeTab === "achievements" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
             key="achievements-tab"
             id="achievements-showcase"
@@ -1927,10 +1940,10 @@ export default function StudentDashboard() {
                 />
              </ErrorBoundary>
          </motion.div>
-       )}
+       </div>
 
 
-      {activeTab === "quiz" && (
+      <div className={activeTab === "quiz" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
           <ErrorBoundary fallback={<div className="p-8 bg-red-100/50 rounded-lg text-center dark:bg-red-900/10">Bài thi tạm thời không khả dụng do lỗi hệ thống AI. Vui lòng quay lại sau.</div>}>
           <motion.div 
             key="quiz-tab"
@@ -2054,10 +2067,10 @@ export default function StudentDashboard() {
              )}
           </motion.div>
           </ErrorBoundary>
-      )}
+      </div>
       </AnimatePresence>
 
-      {activeTab === "mock_exam_setup" && (
+      <div className={activeTab === "mock_exam_setup" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
           <ErrorBoundary fallback={<div className="p-8 bg-red-100/50 rounded-lg text-center dark:bg-red-900/10">Trình tạo bài thi phụ tạm thời không khả dụng.</div>}>
           <motion.div 
             key="mock-exam-setup-tab"
@@ -2130,9 +2143,9 @@ export default function StudentDashboard() {
               </div>
           </motion.div>
           </ErrorBoundary>
-      )}
+      </div>
 
-      {activeTab === "skill_tree" && (
+      <div className={activeTab === "skill_tree" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
           <motion.div 
             key="skill-tree-tab"
             id="skill-tree-viewport"
@@ -2152,9 +2165,9 @@ export default function StudentDashboard() {
                   <SkillTreeGraph decks={decks} />
               </ErrorBoundary>
           </motion.div>
-      )}
+      </div>
 
-      {activeTab === "study" && (
+      <div className={activeTab === "study" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="study-tab"
           initial={{ opacity: 0, y: 20 }}
@@ -2666,9 +2679,9 @@ export default function StudentDashboard() {
             <GlobalActivityFeed />
           </aside>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "all_sets" && (
+      <div className={activeTab === "all_sets" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="all_sets-tab"
           initial={{ opacity: 0, y: 20 }}
@@ -2694,9 +2707,9 @@ export default function StudentDashboard() {
             <DeckList decks={decks} showSearch={true} groupBySubject={true} onCategoryQuiz={(subject, subjectDecks) => setActiveQuizSetup({ subject, decks: subjectDecks })} onCategoryReviewHardCards={startCategoryRemindLaterStudy} onCategoryStudyAll={startCategoryStudyAll} isAdmin={user?.role === 'admin' || user?.role === 'Admin' || user?.role === 'teacher' || sessionStorage.getItem('adminToken') === 'true'} onEditDeck={(deck) => setEditingDeckData({ id: deck.id, title: typeof deck.title === 'string' ? deck.title : JSON.stringify(deck.title), subject: deck.subject || "Tự chọn" })} />
           </div>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "create_deck" && (
+      <div className={activeTab === "create_deck" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div
            key="create_deck-tab"
            initial={{ opacity: 0, scale: 0.98 }}
@@ -2712,9 +2725,9 @@ export default function StudentDashboard() {
              <DocumentConverter />
           </div>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "groups" && (
+      <div className={activeTab === "groups" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="groups-tab"
         initial={{ opacity: 0, y: 20 }}
@@ -2844,9 +2857,9 @@ export default function StudentDashboard() {
             )}
           </div>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "ranking" && (
+      <div className={activeTab === "ranking" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="ranking-tab"
           id="leaderboard-container"
@@ -3042,9 +3055,9 @@ export default function StudentDashboard() {
             )}
           </div>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "app_download" && (
+      <div className={activeTab === "app_download" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="app-download-tab"
           initial={{ opacity: 0, scale: 0.95 }}
@@ -3172,9 +3185,9 @@ export default function StudentDashboard() {
             )}
           </div>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "shop" && (
+      <div className={activeTab === "shop" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="shop-tab"
           initial={{ opacity: 0, scale: 0.95 }}
@@ -4396,9 +4409,9 @@ export default function StudentDashboard() {
 
           </div>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "profile" && (
+      <div className={activeTab === "profile" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="profile-tab"
           initial={{ opacity: 0, y: 20 }}
@@ -4819,9 +4832,9 @@ export default function StudentDashboard() {
           </div>
           </ErrorBoundary>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "cyberpunk" && (
+      <div className={activeTab === "cyberpunk" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div
           key="cyberpunk-tab"
           initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
@@ -4949,9 +4962,9 @@ export default function StudentDashboard() {
           </div>
           </ErrorBoundary>
         </motion.div>
-      )}
+      </div>
 
-      {activeTab === "settings" && (
+      <div className={activeTab === "settings" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="settings-tab"
           id="eco-font-controls-box"
@@ -5305,8 +5318,8 @@ export default function StudentDashboard() {
               )}
           </AnimatePresence>
         </motion.div>
-      )}
-      {activeTab === "history" && (
+      </div>
+      <div className={activeTab === "history" ? "hardware-tab-active w-full" : "hardware-tab-content w-full"}>
         <motion.div 
           key="history-tab"
           id="history-logs-viewport"
@@ -5459,7 +5472,7 @@ export default function StudentDashboard() {
              </div>
           </div>
         </motion.div>
-      )}
+      </div>
 
       {/* Full-screen Expanded Chart Overlay */}
       <AnimatePresence>

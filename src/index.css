@@ -34,7 +34,19 @@
   100% { background-position: 200% 50%; }
 }
 
-@utility bg-size-200 { background-size: 200% 200%; }
+@layer utilities {
+  .hardware-tab-content {
+    display: none;
+  }
+  .hardware-tab-active {
+    display: block;
+    contain: content;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+}
+
+.bg-size-200 { background-size: 200% 200%; }
 
 @layer base {
   html, body {
